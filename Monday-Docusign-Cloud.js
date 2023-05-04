@@ -2,7 +2,7 @@ const {SecretManagerServiceClient} = require('@google-cloud/secret-manager');
 const axios = require('axios');
 const baseURLMonday = 'https://api.monday.com/v2'
 // acessToken para acesso API eSignature DocuSign
-const accessToken = 'eyJ0eXAiOiJNVCIsImFsZyI6IlJTMjU2Iiwia2lkIjoiNjgxODVmZjEtNGU1MS00Y2U5LWFmMWMtNjg5ODEyMjAzMzE3In0.AQoAAAABAAUABwCAHK5DTEbbSAgAgFzRUY9G20gCAFS2kXwk9rVDjuAL8X90ERsVAAEAAAAYAAEAAAAFAAAADQAkAAAAYjY1YzgxMmItYzcwZS00N2NkLWEzYWUtNzEwY2I3MTYxZGRkIgAkAAAAYjY1YzgxMmItYzcwZS00N2NkLWEzYWUtNzEwY2I3MTYxZGRkMACAzvVLMkDbSDcAZ77Jzyh7rU-f4ta5BR4ttQ.18wmL_G0-7aDZcN36ZF8henVyMSd_zQBEJVbK_OcpcyJjNFh0CHyqNLG_OYTS64iykknNs8rT-fOyU6ursqMKUrRi_K6PmCsduNAxrSZW3yxVZ4FaE6j7FZT3D_ZkSuz4z7k3gBqmN08gTK8DE2BMTNVv1x9MMPgNr9tKYFqsR76Ac7P3WSnHlBZuu9tVm82gqd2vyVBBYrHFN0EX_2eDDZ5SWp_7B7cRkofTIaSoWuRn5cYbxWDm7_FZeDVctUF21wQhqmFTaqoNUMYlKJ18nNpfXuGKxZWEWzyHwnIZODb2ru4_qSFcM9fJ_ZCVki86jtp7DPh1UxWS6TxCSLzBw';
+const accessToken = 'eyJ0eXAiOiJNVCIsImFsZyI6IlJTMjU2Iiwia2lkIjoiNjgxODVmZjEtNGU1MS00Y2U5LWFmMWMtNjg5ODEyMjAzMzE3In0.AQoAAAABAAUABwCAfCKskEzbSAgAgLxFutNM20gCAFS2kXwk9rVDjuAL8X90ERsVAAEAAAAYAAEAAAAFAAAADQAkAAAAYjY1YzgxMmItYzcwZS00N2NkLWEzYWUtNzEwY2I3MTYxZGRkIgAkAAAAYjY1YzgxMmItYzcwZS00N2NkLWEzYWUtNzEwY2I3MTYxZGRkMACAzvVLMkDbSDcAZ77Jzyh7rU-f4ta5BR4ttQ.MLZO0XCdoLy8zTQdt-4Wv5q9iu82OxyINK70R9BO7h_hUyCqhLGWWUuzIzP1s5StO8QLeQPi-Dzj8EBgrhVbvCPg9Nigca9eHoyDv7tHr1gn7n5ijgksZ0lYQ_vTTix7jKdwX2WBKU0CBSCpa67gdbrRh7Us7uykMWR8bhrjyaAxgAANSWFjC3J43ol54e-hMzPJq52MY-K-RR85Qo5ZXYZLq9RwmX-CLJNw3Hx4tGkni1DqFB3JqTaOOJqNLqvpiw39Oa7mW_l4oD0ZrybHV3ryYReJbDPA-V2q2sKMoBNf8aa6qiP-xKdSOQFr_V7K2Cby8CiFvMkBs-BY3stHHA';
 const accountId = 'ae33d9e4-0f4f-434d-b615-a8b002e4289e';
 const baseUrl = 'https://demo.docusign.net/restapi/';
 const client = new SecretManagerServiceClient();
@@ -21,7 +21,7 @@ function setTabsValuesOnDocument(body, envelopeId) {
         
     })
     .catch(error => {
-        console.error(error);
+        console.log(error);
     });
     }
 
@@ -64,7 +64,18 @@ function getTabsOnDocument(signerPhone, corporateName, CNPJ, envelopeId) {
 }
 
 //Cria um envelope baseado no template passado pela monday.com
-function createAnEnvelope({ template, signerName, signerEmail, signerPhone, corporateName, CNPJ, approverName, approverEmail }) {
+function createAnEnvelope({ template, 
+    signerName, 
+    signerEmail, 
+    signerPhone, 
+    corporateName, 
+    CNPJ, 
+    approverName, 
+    approverEmail, 
+    itemID, 
+    boardID, 
+    columnID }) {
+
     const template1 = "a0462efd-a9b1-40e9-b912-8488836406c3";
     const template2 = "64687648-9af0-45a8-a264-30c9f6eb5cd7";
     let currentTemplate = "";
@@ -111,15 +122,40 @@ function createAnEnvelope({ template, signerName, signerEmail, signerPhone, corp
         const envelopeId = response.data.envelopeId
         const body = await getTabsOnDocument(signerPhone, corporateName, CNPJ, envelopeId)
         setTabsValuesOnDocument(body, envelopeId)
+
+        changeMondayColumnValue(boardID, itemID, columnID, envelopeId)
+
+
     })
     .catch(error => {
         console.error(error);
     });
 }
 
+async function changeMondayColumnValue(boardID, itemID, columnID, value){
+    const changeColumnsFromItem = {
+        "query": `mutation {change_simple_column_value(item_id: ${itemID}, board_id: ${boardID}, column_id: \"${columnID}\", value: \"${value}\") {id}}` 
+    }
+    const name = 'Appzin_token_monday'
+    const callSecret = await accessSecretVersion(`projects/${"docu-sign-test"}/secrets/${name}/versions/${1}`)
+
+
+    axios.post(`${baseURLMonday}`, changeColumnsFromItem, {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': callSecret
+        }})
+    .then(response =>{
+        console.lg(response)
+    }).catch(error =>{
+        console.log(error)
+    })
+}
+
 exports.main = async (req, res) =>  {
     const itemID = req.body.event.pulseId;
     const boardID = req.body.event.boardId;
+    const columnID = 'texto0'
 
     const getColumnsFromItem = {
         "query": `query {boards(ids: ${boardID}) {items(ids: ${itemID} ) { name column_values {value text id}}}}`
@@ -152,7 +188,18 @@ exports.main = async (req, res) =>  {
         text73: approverEmail} = valuesMondayResponse;
 
         template = JSON.parse(template).index;
-        const newObject = {template, signerName, signerEmail, signerPhone, corporateName, CNPJ, approverName, approverEmail}
+        const newObject = {template, 
+            signerName, 
+            signerEmail, 
+            signerPhone, 
+            corporateName, 
+            CNPJ, 
+            approverName, 
+            approverEmail, 
+            itemID, 
+            boardID, 
+            columnID}
+
         for (let key in newObject) {
             if (typeof newObject[key] === 'string') {
                 try {
