@@ -56,7 +56,7 @@ function getTabsOnDocument(signerPhone, corporateName, CNPJ, envelopeId, callAcc
 }
 
 //Cria um envelope baseado no template passado pela monday.com
-function createAnEnvelope({ template, 
+async function createAnEnvelope({ template, 
     signerName, 
     signerEmail, 
     signerPhone, 
@@ -105,7 +105,7 @@ function createAnEnvelope({ template,
       }
 
     //Requisição para criar um envelope
-    axios.post(`${baseUrl}/v2.1/accounts/${accountId}/envelopes/`, body, {
+    await axios.post(`${baseUrl}/v2.1/accounts/${accountId}/envelopes/`, body, {
         headers: {
             'Authorization': `Bearer ${callAccessToken}`
         }
@@ -131,7 +131,7 @@ async function changeMondayColumnValue(boardID, itemID, columnID, value){
     const callMondaySecret = await accessSecretVersion(`projects/${"docu-sign-test"}/secrets/tokenMonday/versions/${1}`)
 
 
-    axios.post(`${baseURLMonday}`, changeColumnsFromItem, {
+    await axios.post(`${baseURLMonday}`, changeColumnsFromItem, {
         headers: {
             'Content-Type': 'application/json',
             'Authorization': callMondaySecret
@@ -152,12 +152,12 @@ exports.main = async (req, res) =>  {
     const callMondaySecret = await accessSecretVersion(`projects/${"docu-sign-test"}/secrets/tokenMonday/versions/${1}`)
     const callAccessToken = await accessSecretVersion(`projects/${"docu-sign-test"}/secrets/accessToken/versions/latest`)
     // requisição para obter os valores das colunas do item especificado
-    axios.post(`${baseURLMonday}`, getColumnsFromItem, {
+    await axios.post(`${baseURLMonday}`, getColumnsFromItem, {
         headers: {
             'Content-Type': 'application/json',
             'Authorization': callMondaySecret
         }})
-    .then(response => {
+    .then(async response => {
 
         // recebe o array de colunas
         const columnValues = response.data.data.boards[0].items[0].column_values;
@@ -199,7 +199,7 @@ exports.main = async (req, res) =>  {
             }
         }
         
-        createAnEnvelope(newObject, callAccessToken)
+        await createAnEnvelope(newObject, callAccessToken)
     })
     .catch(error => {
         console.error(error);
